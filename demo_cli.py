@@ -10,6 +10,7 @@ import librosa
 import argparse
 import torch
 import sys
+import tensorflow as tf
 
 
 if __name__ == '__main__':
@@ -59,7 +60,9 @@ if __name__ == '__main__':
               "CUDA version matches your PyTorch installation.", file=sys.stderr)
         print("\nIf you're trying to use a cpu, please use the option --cpu.", file=sys.stderr)
         quit(-1)
-    
+
+    ## Disable tensorflow v2 behavior    
+    tf.compat.v1.disable_v2_behavior()
     
     ## Load the models one by one.
     print("Preparing the encoder, the synthesizer and the vocoder...")
