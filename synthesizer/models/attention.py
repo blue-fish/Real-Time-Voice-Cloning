@@ -149,10 +149,10 @@ class LocationSensitiveAttention(BahdanauAttention):
 		normalization_function = _smoothing_normalization if (smoothing == True) else None
 		memory_length = memory_sequence_length if (mask_encoder==True) else None
 		super(LocationSensitiveAttention, self).__init__(
-				num_units=num_units,
+				units=num_units,
 				memory=memory,
 				memory_sequence_length=memory_length,
-				probability_fn=normalization_function,
+				#probability_fn=normalization_function,   #TF2 version only allows softmax and hardmax
 				name=name)
 
 		self.location_convolution = tf.compat.v1.layers.Conv1D(filters=hparams.attention_filters,
