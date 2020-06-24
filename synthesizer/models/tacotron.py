@@ -94,7 +94,7 @@ class Tacotron():
             tower_mel_targets = []
             tower_stop_token_targets = []
             
-            batch_size = tf.shape(inputs)[0]
+            batch_size = tf.shape(input=inputs)[0]
             mel_channels = hp.num_mels
             for i in range(hp.tacotron_num_gpus):
                 tower_inputs.append(tf.reshape(p_inputs[i], [batch_size, -1]))
@@ -134,7 +134,7 @@ class Tacotron():
                     # Embeddings ==> [batch_size, sequence_length, embedding_dim]
                     self.embedding_table = tf.compat.v1.get_variable(
                         "inputs_embedding", [len(symbols), hp.embedding_dim], dtype=tf.float32)
-                    embedded_inputs = tf.nn.embedding_lookup(self.embedding_table, tower_inputs[i])
+                    embedded_inputs = tf.nn.embedding_lookup(params=self.embedding_table, ids=tower_inputs[i])
                     
                     # Encoder Cell ==> [batch_size, encoder_steps, encoder_lstm_units]
                     encoder_cell = TacotronEncoderCell(
@@ -154,7 +154,7 @@ class Tacotron():
                     tileable_shape = [-1, 1, self._hparams.speaker_embedding_size]
                     tileable_embed_targets = tf.reshape(tower_embed_targets[i], tileable_shape)
                     tiled_embed_targets = tf.tile(tileable_embed_targets, 
-                                                       [1, tf.shape(encoder_outputs)[1], 1])
+                                                       [1, tf.shape(input=encoder_outputs)[1], 1])
                     encoder_cond_outputs = tf.concat((encoder_outputs, tiled_embed_targets), 2)
                     
                     ##############
@@ -257,8 +257,8 @@ class Tacotron():
                         linear_outputs = linear_specs_projection(post_outputs)
                     
                     # Grab alignments from the final decoder state
-                    alignments = tf.transpose(final_decoder_state.alignment_history.stack(),
-                                              [1, 2, 0])
+                    alignments = tf.transpose(a=final_decoder_state.alignment_history.stack(),
+                                              perm=[1, 2, 0])
                     
                     self.tower_decoder_output.append(decoder_output)
                     self.tower_alignments.append(alignments)
@@ -362,13 +362,13 @@ class Tacotron():
                         after = tf.compat.v1.losses.mean_squared_error(self.tower_mel_targets[i],
                                                                        self.tower_mel_outputs[i])
                         # Compute <stop_token> loss (for learning dynamic generation stop)
-                        stop_token_loss = tf.reduce_mean(tf.nn.sigmoid_cross_entropy_with_logits(
+                        stop_token_loss = tf.reduce_mean(input_tensor=tf.nn.sigmoid_cross_entropy_with_logits(
                             labels=self.tower_stop_token_targets[i],
                             logits=self.tower_stop_token_prediction[i]))
                         
                         # SV2TTS extra L1 loss
                         l1 = tf.abs(self.tower_mel_targets[i] - self.tower_decoder_output[i])
-                        linear_loss = tf.reduce_mean(l1)
+                        linear_loss = tf.reduce_mean(input_tensor=l1)
 
                         # if hp.predict_linear:
                         #     # Compute linear loss
@@ -446,7 +446,7 @@ class Tacotron():
                     self.learning_rate = self._learning_rate_decay(
                         hp.tacotron_initial_learning_rate, global_step)
                 else:
-                    self.learning_rate = tf.convert_to_tensor(hp.tacotron_initial_learning_rate)
+                    self.learning_rate = tf.convert_to_tensor(value=hp.tacotron_initial_learning_rate)
                 
                 optimizer = tf.compat.v1.train.AdamOptimizer(self.learning_rate, hp.tacotron_adam_beta1,
                                                              hp.tacotron_adam_beta2, hp.tacotron_adam_epsilon)
@@ -474,7 +474,7 @@ class Tacotron():
                     grads.append(expanded_g)
                 # Average over the "tower" dimension.
                 grad = tf.concat(axis=0, values=grads)
-                grad = tf.reduce_mean(grad, 0)
+                grad = tf.reduce_mean(input_tensor=grad, axis=0)
                 
                 v = grad_and_vars[0][1]
                 avg_grads.append(grad)

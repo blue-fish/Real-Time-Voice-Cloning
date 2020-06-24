@@ -9,7 +9,7 @@ class HighwayNet:
         
         self.H_layer = tf.compat.v1.layers.Dense(units=self.units, activation=tf.nn.relu, name="H")
         self.T_layer = tf.compat.v1.layers.Dense(units=self.units, activation=tf.nn.sigmoid, name="T",
-                                       bias_initializer=tf.constant_initializer(-1.))
+                                       bias_initializer=tf.compat.v1.constant_initializer(-1.))
     
     def __call__(self, inputs):
         with tf.compat.v1.variable_scope(self.scope):
@@ -35,8 +35,8 @@ class CBHG:
         self.highwaynet_layers = [
             HighwayNet(highway_units, name="{}_highwaynet_{}".format(self.scope, i + 1)) for i in
             range(n_highwaynet_layers)]
-        self._fw_cell = tf.nn.rnn_cell.GRUCell(rnn_units, name="{}_forward_RNN".format(self.scope))
-        self._bw_cell = tf.nn.rnn_cell.GRUCell(rnn_units, name="{}_backward_RNN".format(self.scope))
+        self._fw_cell = tf.compat.v1.nn.rnn_cell.GRUCell(rnn_units, name="{}_forward_RNN".format(self.scope))
+        self._bw_cell = tf.compat.v1.nn.rnn_cell.GRUCell(rnn_units, name="{}_backward_RNN".format(self.scope))
     
     def __call__(self, inputs, input_lengths):
         with tf.compat.v1.variable_scope(self.scope):
@@ -54,7 +54,7 @@ class CBHG:
             
             # Maxpooling (dimension reduction, Using max instead of average helps finding "Edges" 
 			# in mels)
-            maxpool_output = tf.layers.max_pooling1d(
+            maxpool_output = tf.compat.v1.layers.max_pooling1d(
                 conv_outputs,
                 pool_size=self.pool_size,
                 strides=1,
@@ -80,7 +80,7 @@ class CBHG:
             rnn_input = highway_input
             
             # Bidirectional RNN
-            outputs, states = tf.nn.bidirectional_dynamic_rnn(
+            outputs, states = tf.compat.v1.nn.bidirectional_dynamic_rnn(
                 self._fw_cell,
                 self._bw_cell,
                 rnn_input,
@@ -148,8 +148,8 @@ class ZoneoutLSTMCell(tf.compat.v1.nn.rnn_cell.RNNCell):
         if self.is_training:
             # nn.dropout takes keep_prob (probability to keep activations) not drop_prob (
 			# probability to mask activations)!
-            c = (1 - self._zoneout_cell) * tf.nn.dropout(new_c - prev_c, (1 - self._zoneout_cell)) + prev_c
-            h = (1 - self._zoneout_outputs) * tf.nn.dropout(new_h - prev_h, (1 - self._zoneout_outputs)) + prev_h
+            c = (1 - self._zoneout_cell) * tf.nn.dropout(new_c - prev_c, (1 - (1 - self._zoneout_cell))) + prev_c
+            h = (1 - self._zoneout_outputs) * tf.nn.dropout(new_h - prev_h, (1 - (1 - self._zoneout_outputs))) + prev_h
         else:
             c = (1 - self._zoneout_cell) * new_c + self._zoneout_cell * prev_c
             h = (1 - self._zoneout_outputs) * new_h + self._zoneout_outputs * prev_h
@@ -365,7 +365,7 @@ class StopProjection:
     
     def __call__(self, inputs):
         with tf.compat.v1.variable_scope(self.scope):
-            output = tf.layers.dense(inputs, units=self.shape,
+            output = tf.compat.v1.layers.dense(inputs, units=self.shape,
                                      activation=None, name="projection_{}".format(self.scope))
             
             # During training, don"t use activation as it is integrated inside the 
@@ -429,11 +429,11 @@ def conv1d(inputs, kernel_size, channels, activation, is_training, drop_rate, sc
 
 def _round_up_tf(x, multiple):
     # Tf version of remainder = x % multiple
-    remainder = tf.mod(x, multiple)
+    remainder = tf.math.floormod(x, multiple)
     # Tf version of return x if remainder == 0 else x + multiple - remainder
-    x_round = tf.cond(tf.equal(remainder, tf.zeros(tf.shape(remainder), dtype=tf.int32)),
-                      lambda: x,
-                      lambda: x + multiple - remainder)
+    x_round = tf.cond(pred=tf.equal(remainder, tf.zeros(tf.shape(input=remainder), dtype=tf.int32)),
+                      true_fn=lambda: x,
+                      false_fn=lambda: x + multiple - remainder)
     
     return x_round
 
@@ -441,8 +441,8 @@ def _round_up_tf(x, multiple):
 def sequence_mask(lengths, r, expand=True):
     """Returns a 2-D or 3-D tensorflow sequence mask depending on the argument "expand"
     """
-    max_len = tf.reduce_max(lengths)
-    max_len = _round_up_tf(max_len, tf.convert_to_tensor(r))
+    max_len = tf.reduce_max(input_tensor=lengths)
+    max_len = _round_up_tf(max_len, tf.convert_to_tensor(value=r))
     if expand:
         return tf.expand_dims(tf.sequence_mask(lengths, maxlen=max_len, dtype=tf.float32), axis=-1)
     return tf.sequence_mask(lengths, maxlen=max_len, dtype=tf.float32)
@@ -463,12 +463,12 @@ def MaskedMSE(targets, outputs, targets_lengths, hparams, mask=None):
         mask = sequence_mask(targets_lengths, hparams.outputs_per_step, True)
     
     # [batch_size, time_dimension, channel_dimension(mels)]
-    ones = tf.ones(shape=[tf.shape(mask)[0], tf.shape(mask)[1], tf.shape(targets)[-1]],
+    ones = tf.ones(shape=[tf.shape(input=mask)[0], tf.shape(input=mask)[1], tf.shape(input=targets)[-1]],
                    dtype=tf.float32)
     mask_ = mask * ones
     
-    with tf.control_dependencies([tf.assert_equal(tf.shape(targets), tf.shape(mask_))]):
-        return tf.losses.mean_squared_error(labels=targets, predictions=outputs, weights=mask_)
+    with tf.control_dependencies([tf.compat.v1.assert_equal(tf.shape(input=targets), tf.shape(input=mask_))]):
+        return tf.compat.v1.losses.mean_squared_error(labels=targets, predictions=outputs, weights=mask_)
 
 
 def MaskedSigmoidCrossEntropy(targets, outputs, targets_lengths, hparams, mask=None):
@@ -485,17 +485,17 @@ def MaskedSigmoidCrossEntropy(targets, outputs, targets_lengths, hparams, mask=N
     if mask is None:
         mask = sequence_mask(targets_lengths, hparams.outputs_per_step, False)
     
-    with tf.control_dependencies([tf.assert_equal(tf.shape(targets), tf.shape(mask))]):
+    with tf.control_dependencies([tf.compat.v1.assert_equal(tf.shape(input=targets), tf.shape(input=mask))]):
         # Use a weighted sigmoid cross entropy to measure the <stop_token> loss. Set 
         # hparams.cross_entropy_pos_weight to 1
         # will have the same effect as  vanilla tf.nn.sigmoid_cross_entropy_with_logits.
-        losses = tf.nn.weighted_cross_entropy_with_logits(targets=targets, logits=outputs,
+        losses = tf.nn.weighted_cross_entropy_with_logits(labels=targets, logits=outputs,
                                                           pos_weight=hparams.cross_entropy_pos_weight)
     
-    with tf.control_dependencies([tf.assert_equal(tf.shape(mask), tf.shape(losses))]):
+    with tf.control_dependencies([tf.compat.v1.assert_equal(tf.shape(input=mask), tf.shape(input=losses))]):
         masked_loss = losses * mask
     
-    return tf.reduce_sum(masked_loss) / tf.count_nonzero(masked_loss, dtype=tf.float32)
+    return tf.reduce_sum(input_tensor=masked_loss) / tf.math.count_nonzero(masked_loss, dtype=tf.float32)
 
 
 def MaskedLinearLoss(targets, outputs, targets_lengths, hparams, mask=None):
@@ -513,18 +513,18 @@ def MaskedLinearLoss(targets, outputs, targets_lengths, hparams, mask=None):
         mask = sequence_mask(targets_lengths, hparams.outputs_per_step, True)
     
     # [batch_size, time_dimension, channel_dimension(freq)]
-    ones = tf.ones(shape=[tf.shape(mask)[0], tf.shape(mask)[1], tf.shape(targets)[-1]],
+    ones = tf.ones(shape=[tf.shape(input=mask)[0], tf.shape(input=mask)[1], tf.shape(input=targets)[-1]],
                    dtype=tf.float32)
     mask_ = mask * ones
     
     l1 = tf.abs(targets - outputs)
     n_priority_freq = int(2000 / (hparams.sample_rate * 0.5) * hparams.num_freq)
     
-    with tf.control_dependencies([tf.assert_equal(tf.shape(targets), tf.shape(mask_))]):
+    with tf.control_dependencies([tf.compat.v1.assert_equal(tf.shape(input=targets), tf.shape(input=mask_))]):
         masked_l1 = l1 * mask_
         masked_l1_low = masked_l1[:, :, 0:n_priority_freq]
     
-    mean_l1 = tf.reduce_sum(masked_l1) / tf.reduce_sum(mask_)
-    mean_l1_low = tf.reduce_sum(masked_l1_low) / tf.reduce_sum(mask_)
+    mean_l1 = tf.reduce_sum(input_tensor=masked_l1) / tf.reduce_sum(input_tensor=mask_)
+    mean_l1_low = tf.reduce_sum(input_tensor=masked_l1_low) / tf.reduce_sum(input_tensor=mask_)
     
     return 0.5 * mean_l1 + 0.5 * mean_l1_low
