@@ -3,7 +3,7 @@ from synthesizer.utils.symbols import symbols
 from synthesizer.infolog import log
 from synthesizer.models.helpers import TacoTrainingHelper, TacoTestHelper
 from synthesizer.models.modules import *
-from tensorflow.contrib.seq2seq import dynamic_decode
+from tensorflow_addons.seq2seq import dynamic_decode
 from synthesizer.models.architecture_wrappers import TacotronEncoderCell, TacotronDecoderCell
 from synthesizer.models.custom_decoder import CustomDecoder
 from synthesizer.models.attention import LocationSensitiveAttention

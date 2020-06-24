@@ -1,7 +1,7 @@
 """Attention file for location based attention (compatible with tensorflow attention wrapper)"""
 
 import tensorflow as tf
-from tensorflow.contrib.seq2seq.python.ops.attention_wrapper import BahdanauAttention
+from tensorflow_addons.seq2seq import BahdanauAttention
 from tensorflow.python.layers import core as layers_core
 from tensorflow.python.ops import array_ops, math_ops, nn_ops, variable_scope
 

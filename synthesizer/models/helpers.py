@@ -1,9 +1,9 @@
 import numpy as np
 import tensorflow as tf
-from tensorflow.contrib.seq2seq import Helper
+from tensorflow_addons.seq2seq import Sampler
 
 
-class TacoTestHelper(Helper):
+class TacoTestHelper(Sampler):
 	def __init__(self, batch_size, hparams):
 		with tf.compat.v1.name_scope("TacoTestHelper"):
 			self._batch_size = batch_size
@@ -59,7 +59,7 @@ class TacoTestHelper(Helper):
 			return (finished, next_inputs, next_state)
 
 
-class TacoTrainingHelper(Helper):
+class TacoTrainingHelper(Sampler):
 	def __init__(self, batch_size, targets, hparams, gta, evaluating, global_step):
 		# inputs is [N, T_in], targets is [N, T_out, D]
 		with tf.compat.v1.name_scope("TacoTrainingHelper"):

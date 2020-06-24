@@ -4,7 +4,7 @@ All notations and variable names were used in concordance with originial tensorf
 import collections
 import tensorflow as tf
 from synthesizer.models.attention import _compute_attention
-from tensorflow.contrib.rnn import RNNCell
+from tensorflow.compat.v1.nn.rnn_cell import RNNCell
 from tensorflow.python.framework import ops, tensor_shape
 from tensorflow.python.ops import array_ops, check_ops, rnn_cell_impl, tensor_array_ops
 from tensorflow.python.util import nest
