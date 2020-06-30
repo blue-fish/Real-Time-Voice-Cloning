@@ -29,10 +29,10 @@ def preprocess_librispeech(datasets_root: Path, out_dir: Path, n_processes: int,
 
     # Preprocess the dataset
     speaker_dirs = list(chain.from_iterable(input_dir.glob("*") for input_dir in input_dirs))
-    func = partial(preprocess_speaker, out_dir=out_dir, skip_existing=skip_existing, 
-                   hparams=hparams)
-    job = Pool(n_processes).imap(func, speaker_dirs)
-    for speaker_metadata in tqdm(job, "LibriSpeech", len(speaker_dirs), unit="speakers"):
+    for i in range(len(speaker_dirs)):
+        speaker = speaker_dirs[i] 
+        print("Now working on: " + str(speaker) + " (" + str(i) + "/" + str(len(speaker_dirs)) + ")")
+        speaker_metadata = preprocess_speaker(speaker,out_dir=out_dir, skip_existing=skip_existing,hparams=hparams)
         for metadatum in speaker_metadata:
             metadata_file.write("|".join(str(x) for x in metadatum) + "\n")
     metadata_file.close()
