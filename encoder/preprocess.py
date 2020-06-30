@@ -111,7 +111,7 @@ def _preprocess_speaker_dirs(speaker_dirs, dataset_name, datasets_root, out_dir,
         sources_file.close()
     
     # Process the utterances for each speaker
-    with ThreadPool(8) as pool:
+    with ThreadPool(1) as pool:
         list(tqdm(pool.imap(preprocess_speaker, speaker_dirs), dataset_name, len(speaker_dirs),
                   unit="speakers"))
     logger.finalize()
