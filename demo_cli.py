@@ -38,9 +38,12 @@ if __name__ == '__main__':
     if not args.no_sound:
         import sounddevice as sd
         
-    
+    if args.cpu:
+        # Do not use GPU even if one is present
+        os.environ["CUDA_VISIBLE_DEVICES"]=""
+
     print("Running a test of your configuration...\n")
-    if torch.cuda.is_available() and not args.cpu:
+    if torch.cuda.is_available():
         device_id = torch.cuda.current_device()
         gpu_properties = torch.cuda.get_device_properties(device_id)
         ## Print some environment information (for debugging purposes)

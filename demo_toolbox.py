@@ -26,8 +26,13 @@ if __name__ == '__main__':
     parser.add_argument("--low_mem", action="store_true", help=\
         "If True, the memory used by the synthesizer will be freed after each use. Adds large "
         "overhead but allows to save some GPU memory for lower-end GPUs.")
+    parser.add_argument("--cpu", help="Use CPU.", action="store_true")
     args = parser.parse_args()
     print_args(args, parser)
+
+    if args.cpu:
+        # Do not use GPU even if one is present
+        os.environ["CUDA_VISIBLE_DEVICES"]=""
 
     ## Remind the user to download pretrained models if needed
     check_model_paths(encoder_path=args.enc_models_dir, synthesizer_path=args.syn_models_dir,
