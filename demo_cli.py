@@ -32,6 +32,7 @@ if __name__ == '__main__':
         "overhead but allows to save some GPU memory for lower-end GPUs.")
     parser.add_argument("--no_sound", action="store_true", help=\
         "If True, audio won't be played.")
+    parser.add_argument("--cpu", help="Use CPU.", action="store_true")
     args = parser.parse_args()
     print_args(args, parser)
     if not args.no_sound:
@@ -39,7 +40,7 @@ if __name__ == '__main__':
         
     
     print("Running a test of your configuration...\n")
-    if torch.cuda.is_available():
+    if torch.cuda.is_available() and not args.cpu:
         device_id = torch.cuda.current_device()
         gpu_properties = torch.cuda.get_device_properties(device_id)
         ## Print some environment information (for debugging purposes)
