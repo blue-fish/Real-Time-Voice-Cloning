@@ -3,6 +3,7 @@ from toolbox import Toolbox
 from utils.argutils import print_args
 from utils.modelutils import check_model_paths
 import argparse
+import os
 
 
 if __name__ == '__main__':
