@@ -27,14 +27,19 @@ class SpeakerEncoder(nn.Module):
         self.similarity_weight = nn.Parameter(torch.tensor([10.])).to(loss_device)
         self.similarity_bias = nn.Parameter(torch.tensor([-5.])).to(loss_device)
 
+        # Don't update weights for the part of the model that is already well-trained
+        self.lstm.requires_grad = False
+        self.similarity_weight.requires_grad = False
+        self.similarity_bias.requires_grad = False
+
         # Loss
         self.loss_fn = nn.CrossEntropyLoss().to(loss_device)
         
     def do_gradient_ops(self):
-        # Gradient scale
-        self.similarity_weight.grad *= 0.01
-        self.similarity_bias.grad *= 0.01
-            
+        # Gradient scale - disable this when requires_grad=False because it causes an exception (can't multiply when grad is None)
+        #self.similarity_weight.grad *= 0.01
+        #self.similarity_bias.grad *= 0.01
+
         # Gradient clipping
         clip_grad_norm_(self.parameters(), 3, norm_type=2)
     
