@@ -38,7 +38,7 @@ recognized_datasets = [
 MAX_WAVES = 15
 
 class Toolbox:
-    def __init__(self, datasets_root, enc_models_dir, syn_models_dir, voc_models_dir, low_mem):
+    def __init__(self, datasets_root, enc_models_dir, syn_models_dir, voc_models_dir, low_mem, cpu):
         sys.excepthook = self.excepthook
         self.datasets_root = datasets_root
         self.low_mem = low_mem
