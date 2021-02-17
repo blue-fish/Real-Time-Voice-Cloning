@@ -80,7 +80,13 @@ def train(run_id: str, syn_dir: str, models_dir: str, save_every: int,
                      num_highways=hparams.tts_num_highways,
                      dropout=hparams.tts_dropout,
                      stop_threshold=hparams.tts_stop_threshold,
-                     speaker_embedding_size=hparams.speaker_embedding_size).to(device)
+                     speaker_embedding_size=hparams.speaker_embedding_size)
+
+    # Multi-GPU training
+    if device.type == "cuda" and torch.cuda.device_count() > 1:
+        model = torch.nn.DataParallel(model)
+
+    model = model.to(device)
 
     # Initialize the optimizer
     optimizer = optim.Adam(model.parameters())
@@ -169,12 +175,7 @@ def train(run_id: str, syn_dir: str, models_dir: str, save_every: int,
                 stop = stop.to(device)
 
                 # Forward pass
-                # Parallelize model onto GPUS using workaround due to python bug
-                if device.type == "cuda" and torch.cuda.device_count() > 1:
-                    m1_hat, m2_hat, attention, stop_pred = data_parallel_workaround(model, texts,
-                                                                                    mels, embeds)
-                else:
-                    m1_hat, m2_hat, attention, stop_pred = model(texts, mels, embeds)
+                m1_hat, m2_hat, attention, stop_pred = model(texts, mels, embeds)
 
                 # Backward pass
                 m1_loss = F.mse_loss(m1_hat, mels) + F.l1_loss(m1_hat, mels)
