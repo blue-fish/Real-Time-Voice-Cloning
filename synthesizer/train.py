@@ -82,11 +82,8 @@ def train(run_id: str, syn_dir: str, models_dir: str, save_every: int,
                      stop_threshold=hparams.tts_stop_threshold,
                      speaker_embedding_size=hparams.speaker_embedding_size)
 
-    # Multi-GPU training
-    if device.type == "cuda" and torch.cuda.device_count() > 1:
-        model = torch.nn.DataParallel(model)
-
-    model = model.to(device)
+    # Support multi-GPU training
+    model = torch.nn.DataParallel(model).to(device)
 
     # Initialize the optimizer
     optimizer = optim.Adam(model.parameters())
@@ -94,7 +91,7 @@ def train(run_id: str, syn_dir: str, models_dir: str, save_every: int,
     # Load the weights
     if force_restart or not weights_fpath.exists():
         print("\nStarting the training of Tacotron from scratch\n")
-        model.save(weights_fpath)
+        model.module.save(weights_fpath)
 
         # Embeddings metadata
         char_embedding_fpath = meta_folder.joinpath("CharacterEmbeddings.tsv")
@@ -107,8 +104,8 @@ def train(run_id: str, syn_dir: str, models_dir: str, save_every: int,
 
     else:
         print("\nLoading weights at %s" % weights_fpath)
-        model.load(weights_fpath, optimizer)
-        print("Tacotron weights loaded from step %d" % model.step)
+        model.module.load(weights_fpath, optimizer)
+        print("Tacotron weights loaded from step %d" % model.module.step)
     
     # Initialize the dataset
     metadata_fpath = syn_dir.joinpath("train.txt")
@@ -121,7 +118,7 @@ def train(run_id: str, syn_dir: str, models_dir: str, save_every: int,
                              pin_memory=True)
 
     for i, session in enumerate(hparams.tts_schedule):
-        current_step = model.get_step()
+        current_step = model.module.get_step()
 
         r, lr, max_step, batch_size = session
 
@@ -132,19 +129,19 @@ def train(run_id: str, syn_dir: str, models_dir: str, save_every: int,
             # Are there no further sessions than the current one?
             if i == len(hparams.tts_schedule) - 1:
                 # We have completed training. Save the model and exit
-                model.save(weights_fpath, optimizer)
+                model.module.save(weights_fpath, optimizer)
                 break
             else:
                 # There is a following session, go to it
                 continue
 
-        model.r = r
+        model.module.r = r
 
         # Begin the training
         simple_table([(f"Steps with r={r}", str(training_steps // 1000) + "k Steps"),
                       ("Batch Size", batch_size),
                       ("Learning Rate", lr),
-                      ("Outputs/Step (r)", model.r)])
+                      ("Outputs/Step (r)", model.module.r)])
 
         for p in optimizer.param_groups:
             p["lr"] = lr
@@ -175,7 +172,7 @@ def train(run_id: str, syn_dir: str, models_dir: str, save_every: int,
                 stop = stop.to(device)
 
                 # Forward pass
-                m1_hat, m2_hat, attention, stop_pred = model(texts, mels, embeds)
+                m1_hat, m2_hat, attention, stop_pred = model.module(texts, mels, embeds)
 
                 # Backward pass
                 m1_loss = F.mse_loss(m1_hat, mels) + F.l1_loss(m1_hat, mels)
@@ -197,7 +194,7 @@ def train(run_id: str, syn_dir: str, models_dir: str, save_every: int,
                 time_window.append(time.time() - start_time)
                 loss_window.append(loss.item())
 
-                step = model.get_step()
+                step = model.module.get_step()
                 k = step // 1000
 
                 msg = f"| Epoch: {epoch}/{epochs} ({i}/{steps_per_epoch}) | Loss: {loss_window.average:#.4} | {1./time_window.average:#.2} steps/s | Step: {k}k | "
@@ -206,12 +203,12 @@ def train(run_id: str, syn_dir: str, models_dir: str, save_every: int,
                 # Backup or save model as appropriate
                 if backup_every != 0 and step % backup_every == 0 : 
                     backup_fpath = Path("{}/{}_{}k.pt".format(str(weights_fpath.parent), run_id, k))
-                    model.save(backup_fpath, optimizer)
+                    model.module.save(backup_fpath, optimizer)
 
                 if save_every != 0 and step % save_every == 0 : 
                     # Must save latest optimizer state to ensure that resuming training
                     # doesn't produce artifacts
-                    model.save(weights_fpath, optimizer)
+                    model.module.save(weights_fpath, optimizer)
 
                 # Evaluate model to generate samples
                 epoch_eval = hparams.tts_eval_interval == -1 and i == steps_per_epoch  # If epoch is done
@@ -224,7 +221,7 @@ def train(run_id: str, syn_dir: str, models_dir: str, save_every: int,
                             mel_length = int(dataset.metadata[idx[sample_idx]][4])
                             mel_prediction = np_now(m2_hat[sample_idx]).T[:mel_length]
                             target_spectrogram = np_now(mels[sample_idx]).T[:mel_length]
-                            attention_len = mel_length // model.r
+                            attention_len = mel_length // model.module.r
 
                             eval_model(attention=np_now(attention[sample_idx][:, :attention_len]),
                                        mel_prediction=mel_prediction,
