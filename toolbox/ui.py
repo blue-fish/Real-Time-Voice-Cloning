@@ -579,6 +579,7 @@ class UI(QDialog):
         self.seed_textbox = QLineEdit()
         self.seed_textbox.setMaximumWidth(80)
         layout_seed.addWidget(self.seed_textbox, 0, 1)
+        layout_seed.addWidget(QLabel("Volume:"), 0, 2)
         self.volume_bar = QSlider(Qt.Horizontal)
         self.volume_bar.setToolTip("Volume bar")
         self.volume_bar.setMinimum(0)
@@ -587,7 +588,7 @@ class UI(QDialog):
         self.volume_bar.setValue(50)
         self.volume_bar.setTickInterval(10)
         self.volume_bar.setTickPosition(QSlider.TicksBelow)
-        layout_seed.addWidget(self.volume_bar, 0, 2, 1, 2)
+        layout_seed.addWidget(self.volume_bar, 0, 3, 1, 2)
         gen_layout.addLayout(layout_seed)
 
         self.loading_bar = QProgressBar()

@@ -123,10 +123,10 @@ class Toolbox:
         self.current_wav = self.waves_list[index]
 
     def export_current_wave(self):
-        self.ui.save_audio_file(self.current_wav, Synthesizer.sample_rate)
+        self.ui.save_audio_file(self.adjust_volume(self.current_wav), Synthesizer.sample_rate)
 
     def replay_last_wav(self):
-        self.ui.play(self.current_wav, Synthesizer.sample_rate)
+        self.ui.play(self.adjust_volume(self.current_wav), Synthesizer.sample_rate)
 
     def reset_ui(self, encoder_models_dir, synthesizer_models_dir, vocoder_models_dir, seed):
         self.ui.populate_browser(self.datasets_root, recognized_datasets, 0, True)
@@ -229,19 +229,6 @@ class Toolbox:
         speaker_name, spec, breaks, _ = self.current_generated
         assert spec is not None
 
-        # Determine volume adjustment from volume bar position (0-100)
-        volume_adjust = Synthesizer.hparams.max_abs_value * (self.ui.volume_bar.value() - 50) / 100
-
-        # Adjust volume of the spectrogram
-        if Synthesizer.hparams.symmetric_mels:
-            modified_spec = spec + 2 * volume_adjust
-            modified_spec = np.clip(modified_spec,
-                                    -1 * Synthesizer.hparams.max_abs_value,
-                                    Synthesizer.hparams.max_abs_value)
-        else:
-            modified_spec = spec + volume_adjust
-            modified_spec = np.clip(modified_spec, 0, Synthesizer.hparams.max_abs_value)
-
         # Initialize the vocoder model and make it determinstic, if user provides a seed
         if self.ui.random_seed_checkbox.isChecked():
             seed = int(self.ui.seed_textbox.text())
@@ -264,10 +251,10 @@ class Toolbox:
             self.ui.set_loading(i, seq_len)
         if self.ui.current_vocoder_fpath is not None:
             self.ui.log("")
-            wav = vocoder.infer_waveform(modified_spec, progress_callback=vocoder_progress)
+            wav = vocoder.infer_waveform(spec, progress_callback=vocoder_progress)
         else:
             self.ui.log("Waveform generation with Griffin-Lim... ")
-            wav = Synthesizer.griffin_lim(modified_spec)
+            wav = Synthesizer.griffin_lim(spec)
         self.ui.set_loading(0)
         self.ui.log(" Done!", "append")
         
@@ -280,7 +267,7 @@ class Toolbox:
 
         # Play it
         wav = wav / np.abs(wav).max() * 0.97
-        self.ui.play(wav, Synthesizer.sample_rate)
+        self.ui.play(self.adjust_volume(wav), Synthesizer.sample_rate)
 
         # Name it (history displayed in combobox)
         # TODO better naming for the combobox items?
@@ -357,3 +344,12 @@ class Toolbox:
 
     def update_seed_textbox(self):
        self.ui.update_seed_textbox() 
+
+    def adjust_volume(self, wav):
+        # Determine volume adjustment from volume bar position (0-100)
+        volume_factor = np.exp(0.04 * (self.ui.volume_bar.value() - 50))
+
+        # Adjust volume and clip result
+        wav = wav * volume_factor
+        wav = np.clip(wav, -0.97, 0.97)
+        return wav
