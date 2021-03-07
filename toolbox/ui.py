@@ -390,7 +390,7 @@ class UI(QDialog):
         self.loading_bar.setTextVisible(value != 0)
         self.app.processEvents()
 
-    def populate_gen_options(self, seed, trim_silences):
+    def populate_gen_options(self, seed):
         if seed is not None:
             self.random_seed_checkbox.setChecked(True)
             self.seed_textbox.setText(str(seed))
@@ -399,10 +399,6 @@ class UI(QDialog):
             self.random_seed_checkbox.setChecked(False)
             self.seed_textbox.setText(str(0))
             self.seed_textbox.setEnabled(False)
-
-        if not trim_silences:
-            self.trim_silences_checkbox.setChecked(False)
-            self.trim_silences_checkbox.setDisabled(True)
 
     def update_seed_textbox(self):
         if self.random_seed_checkbox.isChecked():
@@ -583,10 +579,15 @@ class UI(QDialog):
         self.seed_textbox = QLineEdit()
         self.seed_textbox.setMaximumWidth(80)
         layout_seed.addWidget(self.seed_textbox, 0, 1)
-        self.trim_silences_checkbox = QCheckBox("Enhance vocoder output")
-        self.trim_silences_checkbox.setToolTip("When checked, trims excess silence in vocoder output."
-            " This feature requires `webrtcvad` to be installed.")
-        layout_seed.addWidget(self.trim_silences_checkbox, 0, 2, 1, 2)
+        self.volume_bar = QSlider(Qt.Horizontal)
+        self.volume_bar.setToolTip("Volume bar")
+        self.volume_bar.setMinimum(0)
+        self.volume_bar.setMaximum(100)
+        self.volume_bar.setSingleStep(1)
+        self.volume_bar.setValue(50)
+        self.volume_bar.setTickInterval(10)
+        self.volume_bar.setTickPosition(QSlider.TicksBelow)
+        layout_seed.addWidget(self.volume_bar, 0, 2, 1, 2)
         gen_layout.addLayout(layout_seed)
 
         self.loading_bar = QProgressBar()

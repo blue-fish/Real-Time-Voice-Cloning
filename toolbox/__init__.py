@@ -60,13 +60,6 @@ class Toolbox:
         self.waves_count = 0
         self.waves_namelist = []
 
-        # Check for webrtcvad (enables removal of silences in vocoder output)
-        try:
-            import webrtcvad
-            self.trim_silences = True
-        except:
-            self.trim_silences = False
-
         # Initialize the events and the interface
         self.ui = UI()
         self.reset_ui(enc_models_dir, syn_models_dir, voc_models_dir, seed)
@@ -138,7 +131,7 @@ class Toolbox:
     def reset_ui(self, encoder_models_dir, synthesizer_models_dir, vocoder_models_dir, seed):
         self.ui.populate_browser(self.datasets_root, recognized_datasets, 0, True)
         self.ui.populate_models(encoder_models_dir, synthesizer_models_dir, vocoder_models_dir)
-        self.ui.populate_gen_options(seed, self.trim_silences)
+        self.ui.populate_gen_options(seed)
         
     def load_from_browser(self, fpath=None):
         if fpath is None:
@@ -210,7 +203,7 @@ class Toolbox:
         # Update the synthesizer random seed
         if self.ui.random_seed_checkbox.isChecked():
             seed = int(self.ui.seed_textbox.text())
-            self.ui.populate_gen_options(seed, self.trim_silences)
+            self.ui.populate_gen_options(seed)
         else:
             seed = None
 
@@ -236,10 +229,23 @@ class Toolbox:
         speaker_name, spec, breaks, _ = self.current_generated
         assert spec is not None
 
+        # Determine volume adjustment from volume bar position (0-100)
+        volume_adjust = Synthesizer.hparams.max_abs_value * (self.ui.volume_bar.value() - 50) / 100
+
+        # Adjust volume of the spectrogram
+        if Synthesizer.hparams.symmetric_mels:
+            modified_spec = spec + 2 * volume_adjust
+            modified_spec = np.clip(modified_spec,
+                                    -1 * Synthesizer.hparams.max_abs_value,
+                                    Synthesizer.hparams.max_abs_value)
+        else:
+            modified_spec = spec + volume_adjust
+            modified_spec = np.clip(modified_spec, 0, Synthesizer.hparams.max_abs_value)
+
         # Initialize the vocoder model and make it determinstic, if user provides a seed
         if self.ui.random_seed_checkbox.isChecked():
             seed = int(self.ui.seed_textbox.text())
-            self.ui.populate_gen_options(seed, self.trim_silences)
+            self.ui.populate_gen_options(seed)
         else:
             seed = None
 
@@ -258,10 +264,10 @@ class Toolbox:
             self.ui.set_loading(i, seq_len)
         if self.ui.current_vocoder_fpath is not None:
             self.ui.log("")
-            wav = vocoder.infer_waveform(spec, progress_callback=vocoder_progress)
+            wav = vocoder.infer_waveform(modified_spec, progress_callback=vocoder_progress)
         else:
             self.ui.log("Waveform generation with Griffin-Lim... ")
-            wav = Synthesizer.griffin_lim(spec)
+            wav = Synthesizer.griffin_lim(modified_spec)
         self.ui.set_loading(0)
         self.ui.log(" Done!", "append")
         
@@ -271,10 +277,6 @@ class Toolbox:
         wavs = [wav[start:end] for start, end, in zip(b_starts, b_ends)]
         breaks = [np.zeros(int(0.15 * Synthesizer.sample_rate))] * len(breaks)
         wav = np.concatenate([i for w, b in zip(wavs, breaks) for i in (w, b)])
-
-        # Trim excessive silences
-        if self.ui.trim_silences_checkbox.isChecked():
-            wav = encoder.preprocess_wav(wav)
 
         # Play it
         wav = wav / np.abs(wav).max() * 0.97
